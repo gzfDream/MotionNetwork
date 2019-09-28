@@ -159,70 +159,113 @@ units = 1024
 # size of pose
 pose_size = 7
 
-BATCH_SIZE = 64
-seq_length = 50
-
-model = Model(units, 7)
-
-model.build(tf.TensorShape([BATCH_SIZE, seq_length, pose_size]))
-model.summary()
-
 # Directory where the checkpoints will be saved
 checkpoint_dir = './training_checkpoints'
-# Name of the checkpoint files
-checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 
 
-"""
-    读取数据
-"""
-train_data = DataGenerator(
-    "../raw_data/trajs_2.npy",
-    mode="training",
-    batch_size=BATCH_SIZE,
-    shuffle=True)
+def train():
+    BATCH_SIZE = 64
+    seq_length = 50
 
-train_batches_per_epoch = int(
-    np.floor(
-        train_data.data_size /
-        BATCH_SIZE))
-print('number of dataset: ', train_data.data_size)
-print('number of batch: ', train_batches_per_epoch)
+    model = Model(units, pose_size)
+
+    model.build(tf.TensorShape([BATCH_SIZE, seq_length, pose_size]))
+    model.summary()
+
+    # Name of the checkpoint files
+    checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+
+    # 读取数据
+    train_data = DataGenerator(
+        "../raw_data/trajs_2.npy",
+        mode="training",
+        batch_size=BATCH_SIZE,
+        shuffle=True)
+
+    train_batches_per_epoch = int(
+        np.floor(
+            train_data.data_size /
+            BATCH_SIZE))
+    print('number of dataset: ', train_data.data_size)
+    print('number of batch: ', train_batches_per_epoch)
+
+    # 训练
+    EPOCHS = 5
+
+    # Training loop
+    for epoch in range(EPOCHS):
+        start = time.time()
+
+        # initializing the hidden state at the start of every epoch
+        # initally hidden is None
+        hidden = model.reset_states()
+
+        iterator = train_data.data.make_one_shot_iterator()
+
+        for batch in range(train_batches_per_epoch):
+            inp, target = iterator.get_next()
+            with tf.GradientTape() as tape:
+                # feeding the hidden state back into the model
+                # This is the interesting step
+                predictions = model(inp)
+                loss = loss_function(target, predictions)
+
+            grads = tape.gradient(loss, model.variables)
+            optimizer.apply_gradients(zip(grads, model.variables))
+
+            if batch % 100 == 0:
+                print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
+                                                             batch,
+                                                             loss))
+        # saving (checkpoint) the model every 5 epochs
+        if (epoch + 1) % 5 == 0:
+            model.save_weights(checkpoint_prefix)
+
+        print('Epoch {} Loss {:.4f}'.format(epoch + 1, loss))
+        print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
 
 
-"""
-    训练
-"""
-EPOCHS = 5
+def sample():
+    # 加载模型
+    model = Model(units, pose_size)
+    model.load_weights(tf.train.latest_checkpoint(checkpoint_dir))
+    model.build(tf.TensorShape([1, 1, pose_size]))
 
-# Training loop
-for epoch in range(EPOCHS):
-    start = time.time()
+    # Evaluation step (generating text using the learned model)
+    # Number of characters to generate
+    num_generate = 100
 
-    # initializing the hidden state at the start of every epoch
-    # initally hidden is None
-    hidden = model.reset_states()
+    # the start position to experiment
+    start_position = [[1., 2., 3., 4., 5., 6., 7.]]
+    start_position = tf.expand_dims(start_position, 0)
 
-    iterator = train_data.data.make_one_shot_iterator()
+    # Empty string to store our results
+    trajectories_generated = []
 
-    for batch in range(train_batches_per_epoch):
-        inp, target = iterator.get_next()
-        with tf.GradientTape() as tape:
-            # feeding the hidden state back into the model
-            # This is the interesting step
-            predictions = model(inp)
-            loss = loss_function(target, predictions)
+    # Low temperatures results in more predictable text.
+    # Higher temperatures results in more surprising text.
+    # Experiment to find the best setting.
+    temperature = 1.0
 
-        grads = tape.gradient(loss, model.variables)
-        optimizer.apply_gradients(zip(grads, model.variables))
+    # Evaluation loop.
 
-        if batch % 100 == 0:
-            print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
-                                                         batch,
-                                                         loss))
-    # saving (checkpoint) the model every 5 epochs
-    if (epoch + 1) % 5 == 0:
-        model.save_weights(checkpoint_prefix)
+    # Here batch size == 1
+    model.reset_states()
+    for i in range(num_generate):
+        predictions = model(start_position)
+        # remove the batch dimension
+        predictions = tf.squeeze(predictions, 0)
 
-    print('Epoch {} Loss {:.4f}'.format(epoch + 1, loss))
-    print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
+        # using a multinomial distribution to predict the word returned by the model
+        predictions = predictions / temperature
+        predicted_id = tf.multinomial(predictions, num_samples=1)[-1, 0].numpy()
+
+        # We pass the predicted word as the next input to the model
+        # along with the previous hidden state
+        start_position = tf.expand_dims([predicted_id], 0)
+        trajectories_generated.append(predicted_id)
+
+    # print(trajectories_generated)
+
+
+sample()
