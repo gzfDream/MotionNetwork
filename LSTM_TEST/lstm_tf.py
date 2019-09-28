@@ -151,7 +151,13 @@ optimizer = tf.train.AdamOptimizer()
 # one-hot vectors
 def loss_function(real, preds):
     # return tf.losses.sparse_softmax_cross_entropy(labels=real, logits=preds)
-    return tf.losses.mean_squared_error(labels=real, predictions=preds)
+    # 位置误差
+    distance_loss = tf.losses.mean_squared_error(labels=real[:, :, 0:3], predictions=preds[:, :, 0:3])
+
+    # 角度误差
+    red_sum = tf.reduce_sum(real[:, :, 3:7] * preds[:, :, 3:7], 2)
+    rotation_loss = tf.reduce_mean(tf.acos(red_sum))
+    return distance_loss + rotation_loss
 
 
 # Number of RNN units
@@ -190,7 +196,7 @@ def train():
     print('number of batch: ', train_batches_per_epoch)
 
     # 训练
-    EPOCHS = 5
+    EPOCHS = 50
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -236,8 +242,8 @@ def sample():
     num_generate = 100
 
     # the start position to experiment
-    start_position = [[1., 2., 3., 4., 5., 6., 7.]]
-    start_position = tf.expand_dims(start_position, 0)
+    start_position = [1., 2., 3., 4., 5., 6., 7.]
+    start_position = tf.expand_dims([start_position], 0)
 
     # Empty string to store our results
     trajectories_generated = []
@@ -258,14 +264,15 @@ def sample():
 
         # using a multinomial distribution to predict the word returned by the model
         predictions = predictions / temperature
-        predicted_id = tf.multinomial(predictions, num_samples=1)[-1, 0].numpy()
+        # predicted_id = tf.multinomial(predictions, num_samples=1)[-1, 0].numpy()
 
         # We pass the predicted word as the next input to the model
         # along with the previous hidden state
-        start_position = tf.expand_dims([predicted_id], 0)
-        trajectories_generated.append(predicted_id)
+        start_position = tf.expand_dims(predictions, 0)
+        trajectories_generated.append(predictions)
 
     # print(trajectories_generated)
 
 
-sample()
+train()
+# sample()
