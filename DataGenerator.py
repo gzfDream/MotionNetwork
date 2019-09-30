@@ -64,7 +64,7 @@ class DataGenerator(object):
             data = data.shuffle(buffer_size=buffer_size)
 
         self.data = data
-        self._show_data()
+        # self._show_data()
 
     def _read_npy_file(self):
         """Read the content of the npy file and store it into lists."""
@@ -115,5 +115,5 @@ class DataGenerator(object):
             #     print("{} end!".format(num))
 
 
-generator = DataGenerator("./raw_data/trajs.npy", mode='training')
+# generator = DataGenerator("./raw_data/trajs.npy", mode='training')
 # print(np.shape(np.load('trajs.npy')))

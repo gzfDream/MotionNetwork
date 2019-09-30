@@ -54,13 +54,13 @@ class TrajNet:
             input_x=None,
             input_y=None,
             targets=None,
-            lstm_size=128,
-            num_layers=1,
-            batch_size=64,
-            num_steps=50,
-            training=True,
+            lstm_size=128,   #
+            num_layers=1,    #
+            batch_size=64,   #
+            num_steps=50,    # 一条轨迹有多少个位姿
+            training=True,   # train or
             keep_prob=0.5,
-            num_pose=7):
+            num_pose=7):     # 一个位姿由七个值表示
         if training is False:
             batch_size, num_steps = 1, 1
         else:
@@ -82,7 +82,9 @@ class TrajNet:
     def build_lstm(self):
 
         # 串联当前位姿和最终的目标位姿
-        input_lstm = tf.concat(self._input_x, self._targets)
+        print(self._input_x)
+        print(self._targets)
+        input_lstm = tf.concat([self._input_x, self._targets], axis=2)
 
         # 创建单个cell并堆叠多层
         def get_a_cell(lstm_size, keep_prob):
@@ -127,7 +129,9 @@ class TrajNet:
             with tf.name_scope('MDN_Loss') as scope:
                 # 维度[num_traj, num_steps, self.num_pose]
                 self.proba_prediction = tf.reshape(
-                    self.logits, (self._batch_size, self._num_steps, self._num_pose))
+                     self.logits, (self._batch_size, self._num_steps, output_units))
 
                 self.cost_mdn = mixture_density(self._input_y, self.proba_prediction, mixtures, self._num_pose)
+
+
 
