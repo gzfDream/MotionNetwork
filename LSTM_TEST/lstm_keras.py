@@ -107,14 +107,42 @@ class Model(tf.keras.Model):
         self.units = units
 
         if tf.test.is_gpu_available():
-            self.gru = tf.keras.layers.CuDNNGRU(
+            self.LSTM_1 = tf.keras.layers.CuDNNLSTM(
                 self.units,
                 return_sequences=True,
                 recurrent_initializer='glorot_uniform',
                 stateful=True,
                 dtype='float32')
+            self.LSTM_2 = tf.keras.layers.CuDNNLSTM(
+                self.units,
+                return_sequences=True,
+                recurrent_initializer='glorot_uniform',
+                stateful=True,
+                dtype='float32')
+            self.LSTM_3 = tf.keras.layers.CuDNNLSTM(
+                self.units,
+                return_sequences=True,
+                recurrent_initializer='glorot_uniform',
+                stateful=True,
+                dtype='float32')
+
+
         else:
-            self.gru = tf.keras.layers.GRU(
+            self.LSTM_1 = tf.keras.layers.LSTM(
+                self.units,
+                return_sequences=True,
+                recurrent_activation='sigmoid',
+                recurrent_initializer='glorot_uniform',
+                stateful=True,
+                dtype='float32')
+            self.LSTM_2 = tf.keras.layers.LSTM(
+                self.units,
+                return_sequences=True,
+                recurrent_activation='sigmoid',
+                recurrent_initializer='glorot_uniform',
+                stateful=True,
+                dtype='float32')
+            self.LSTM_2 = tf.keras.layers.LSTM(
                 self.units,
                 return_sequences=True,
                 recurrent_activation='sigmoid',

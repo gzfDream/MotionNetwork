@@ -54,23 +54,23 @@ class TrajNet:
             input_x=None,
             input_y=None,
             targets=None,
-            lstm_size=128,   #
-            num_layers=1,    #
-            batch_size=64,   #
-            num_steps=50,    # 一条轨迹有多少个位姿
-            training=True,   # train or
-            keep_prob=0.5,
+            lstm_size=128,   # 隐藏层数目
+            num_layers=3,    # LSTM层数
+            batch_size=64,   # batch size
+            timestep_size=50,    # 一条轨迹有多少个位姿
+            training=True,   # train or sample
+            keep_prob=0.5,   #
             num_pose=7):     # 一个位姿由七个值表示
         if training is False:
-            batch_size, num_steps = 1, 1
+            batch_size, timestep_size = 1, 1
         else:
-            batch_size, num_steps = batch_size, num_steps
+            batch_size, timestep_size = batch_size, timestep_size
 
         self._input_x = input_x
         self._input_y = input_y
         self._targets = targets
         self._batch_size = batch_size
-        self._num_steps = num_steps
+        self._timestep_size = timestep_size
         self._lstm_size = lstm_size
         self._num_layers = num_layers
         self._keep_prob = keep_prob
@@ -102,15 +102,15 @@ class TrajNet:
             self.initial_state = cell.zero_state(self._batch_size, tf.float32)
 
             # 通过dynamic_rnn对cell展开时间维度
-            # self.lstm_outputs的维度[num_traj, num_steps, lstm_size]
+            # self.lstm_outputs的维度[num_traj, _timestep_size, lstm_size]
             # self.final_state的维度[self.num_traj, self.lstm_size]
             self.lstm_outputs, self.final_state = tf.nn.dynamic_rnn(
                 cell, input_lstm, initial_state=self.initial_state)
 
             # 通过lstm_outputs得到预测
-            # 维度[num_traj, num_steps, lstm_size]
+            # 维度[num_traj, _timestep_size, lstm_size]
             traj_output = tf.concat(self.lstm_outputs, 1)
-            # 维度[num_traj*num_steps, lstm_size]
+            # 维度[num_traj*_timestep_size, lstm_size]
             x = tf.reshape(traj_output, [-1, self._lstm_size])
 
             with tf.variable_scope('Output_MDN'):
@@ -129,7 +129,7 @@ class TrajNet:
             with tf.name_scope('MDN_Loss') as scope:
                 # 维度[num_traj, num_steps, self.num_pose]
                 self.proba_prediction = tf.reshape(
-                     self.logits, (self._batch_size, self._num_steps, output_units))
+                     self.logits, (self._batch_size, self._timestep_size, output_units))
 
                 self.cost_mdn = mixture_density(self._input_y, self.proba_prediction, mixtures, self._num_pose)
 
