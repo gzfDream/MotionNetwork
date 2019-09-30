@@ -152,12 +152,13 @@ optimizer = tf.train.AdamOptimizer()
 def loss_function(real, preds):
     # return tf.losses.sparse_softmax_cross_entropy(labels=real, logits=preds)
     # 位置误差
-    distance_loss = tf.losses.mean_squared_error(labels=real[:, :, 0:3], predictions=preds[:, :, 0:3])
+    # distance_loss = tf.losses.mean_squared_error(labels=real[:, :, 0:3], predictions=preds[:, :, 0:3])
 
     # 角度误差
-    red_sum = tf.reduce_sum(real[:, :, 3:7] * preds[:, :, 3:7], 2)
-    rotation_loss = tf.reduce_mean(tf.acos(red_sum))
-    return distance_loss + rotation_loss
+    # multi = real[:, :, 3:7] * preds[:, :, 3:7]
+    # red_sum = tf.abs(tf.reduce_sum(multi, 2))
+    # rotation_loss = tf.reduce_mean(tf.acos(red_sum))
+    return tf.losses.mean_squared_error(labels=real, predictions=preds)  # distance_loss + rotation_loss
 
 
 # Number of RNN units
@@ -219,7 +220,7 @@ def train():
             grads = tape.gradient(loss, model.variables)
             optimizer.apply_gradients(zip(grads, model.variables))
 
-            if batch % 100 == 0:
+            if batch % 20 == 0:
                 print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1,
                                                              batch,
                                                              loss))
@@ -242,7 +243,7 @@ def sample():
     num_generate = 100
 
     # the start position to experiment
-    start_position = [1., 2., 3., 4., 5., 6., 7.]
+    start_position = [0.166521, 0.914289, 0.098687, 0.155130, -0.169848, -0.590939, 0.773225]
     start_position = tf.expand_dims([start_position], 0)
 
     # Empty string to store our results
@@ -269,10 +270,16 @@ def sample():
         # We pass the predicted word as the next input to the model
         # along with the previous hidden state
         start_position = tf.expand_dims(predictions, 0)
-        trajectories_generated.append(predictions)
+        trajectories_generated.append(predictions.numpy()[0])
 
-    # print(trajectories_generated)
+    result_list = []
+    for pose in trajectories_generated:
+        l = []
+        for i in pose:
+            l.append(i)
+        result_list.append(l)
+    np.savetxt("results.txt", result_list, fmt='%f', delimiter=' ')
 
 
-train()
-# sample()
+# train()
+sample()
