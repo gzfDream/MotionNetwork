@@ -115,5 +115,6 @@ class DataGenerator(object):
             #     print("{} end!".format(num))
 
 
-# generator = DataGenerator("./raw_data/trajs.npy", mode='training')
-# print(np.shape(np.load('trajs.npy')))
+if __name__ == '__main__':
+    generator = DataGenerator("./raw_data/trajs_position.npy", mode='training')
+    # print(np.shape(np.load('trajs.npy')))

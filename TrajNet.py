@@ -134,4 +134,3 @@ class TrajNet:
                 self.cost_mdn = mixture_density(self._input_y, self.proba_prediction, mixtures, self._num_pose)
 
 
-

@@ -351,8 +351,8 @@ def main(_):
     if not FLAGS.data_path:
         raise ValueError("Must set --data_path to PTB data directory")
     gpus = [
-        x.name for x in device_lib.list_local_devices() if x.device_type == "GPU"
-    ]
+            x.name for x in device_lib.list_local_devices() if x.device_type == "GPU"
+           ]
     if FLAGS.num_gpus > len(gpus):
         raise ValueError(
             "Your machine has only %d gpus "

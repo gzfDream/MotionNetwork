@@ -60,7 +60,7 @@ def main(argv):
                     lstm_size=FLAGS.lstm_size,
                     num_layers=FLAGS.num_layers,
                     batch_size=FLAGS.batch_size,
-                    num_steps=FLAGS.num_steps,
+                    timestep_size=FLAGS.num_steps,
                     training=True,
                     keep_prob=FLAGS.train_keep_prob,
                     num_pose=FLAGS.num_pose)

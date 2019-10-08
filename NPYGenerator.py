@@ -34,20 +34,27 @@ import math
 #     return traj_list
 
 
-def load_json(jsonfile):
+def load_json(jsonfile, rota):
     """
     读取单个json文件  load_json("data.json")
     :param jsonfile: 文件名
+    :param rota:    是否存储旋转四元数
     :return: 轨迹位置点的list
     """
     with open(jsonfile, 'r') as load_f:
         jdata = json.load(load_f)
 
         traj_list = []
-        for i in range(np.size(jdata['Trajectory'])):
-            position = list(jdata['Trajectory'][i]['Position'].values())
-            rotation = list(jdata['Trajectory'][i]['Rotation'].values())
-            traj_list.append(list(np.concatenate((position, rotation), axis=0)))
+
+        if rota:
+            for i in range(np.size(jdata['Trajectory'])):
+                position = list(jdata['Trajectory'][i]['Position'].values())
+                rotation = list(jdata['Trajectory'][i]['Rotation'].values())
+                traj_list.append(list(np.concatenate((position, rotation), axis=0)))
+        else:
+            for i in range(np.size(jdata['Trajectory'])):
+                position = list(jdata['Trajectory'][i]['Position'].values())
+                traj_list.append(list(position))
 
     return traj_list
 
@@ -67,7 +74,7 @@ def json2npy(json_files):
     trajs_path = os.listdir(json_files)
 
     for index in range(len(trajs_path)):
-        json_data = np.array(load_json(json_files + '/' + trajs_path[index]))
+        json_data = np.array(load_json(json_files + '/' + trajs_path[index], True))
         path = './raw_data/npy/'+trajs_path[index][0:-4]+'npy'
         np.save(path, json_data)
 
@@ -131,7 +138,7 @@ def process_json(json_files, output_folder):
 
 
 # 处理单个轨迹
-def data_generator(traj_json, pose_num, gap):
+def data_generator(traj_json, pose_num, gap, or_rota):
     """
     处理单个轨迹
     例子：
@@ -141,9 +148,10 @@ def data_generator(traj_json, pose_num, gap):
     :param traj_json: 文件名
     :param pose_num: 一个训练实例轨迹的位姿数
     :param gap: 采样轨迹起始点间隔，比如gap=2，轨迹1起始A点，轨迹2起始C点
+    :param or_rota: 是否存储旋转四元数
     :return: 若干训练实例
     """
-    json_data = load_json(traj_json)    # 读取
+    json_data = load_json(traj_json, or_rota)    # 读取
     trajs = []  # 返回结果
     flag = False    # 结果是否有效
 
@@ -152,21 +160,21 @@ def data_generator(traj_json, pose_num, gap):
         for i in range(1):  # int((np.shape(json_data)[0]-pose_num)/gap)
             traj_s = []
             traj_t = []
-            # targets = []
+            targets = []
 
             for j in range(pose_num):
                 traj_s.append(json_data[i*gap+j])
                 traj_t.append(json_data[i*gap+j+1])
-                # targets.append(json_data[i*gap+pose_num])
+                targets.append(json_data[i*gap+pose_num])
 
-            # trajs.append([traj_s, traj_t, targets])
-            trajs.append([traj_s, traj_t])
+            trajs.append([traj_s, traj_t, targets])
+            # trajs.append([traj_s, traj_t])
 
     return flag, trajs  # trajs维数 (len(traj_json)-pose_num+1, 2, pose_num, 7)
 
 
 # 生成数据集
-def dataSet_generator(trajs_json, traj_start, save_trajs, pose_num, mode):
+def dataSet_generator(trajs_json, traj_start, save_trajs, pose_num, mode, or_rota):
     """
     处理文件夹下所有轨迹
     :param trajs_json: training模式轨迹数据路径
@@ -182,7 +190,7 @@ def dataSet_generator(trajs_json, traj_start, save_trajs, pose_num, mode):
         trajs_path = os.listdir(trajs_json)
 
         for index in range(len(trajs_path)):
-            flag, traj = data_generator(trajs_json+'/'+trajs_path[index], pose_num, gap=2)
+            flag, traj = data_generator(trajs_json+'/'+trajs_path[index], pose_num, gap=2, or_rota=or_rota)
             if flag:
                 trajs += traj
 
@@ -198,14 +206,14 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('trajs', "./raw_data/json_after", 'the path of trajs')
 flags.DEFINE_string('traj_start', "./raw_data/test.txt", 'the start pose for sample')
-flags.DEFINE_string('trajs_save', "./raw_data/trajs_2.npy", 'the save path of trajs npy')
+flags.DEFINE_string('trajs_save', "./raw_data/trajs_position.npy", 'the save path of trajs npy')
 flags.DEFINE_string('mode', 'training', ' training or sample')
 flags.DEFINE_integer('pose_num', 50, '轨迹中姿态数量')
 
 def main(argv):
     # process_json('./raw_data/json', "./raw_data/json_after/")
 
-    dataSet_generator(FLAGS.trajs, FLAGS.traj_start, FLAGS.trajs_save, FLAGS.pose_num, FLAGS.mode)
+    dataSet_generator(FLAGS.trajs, FLAGS.traj_start, FLAGS.trajs_save, FLAGS.pose_num, FLAGS.mode, False)
     print(np.shape(np.load(FLAGS.trajs_save)))
 
     # json2npy('./raw_data/json_after')
