@@ -106,7 +106,7 @@ tf.flags.DEFINE_integer('log_every_n', 2, 'log to the screen every n steps')
 tf.flags.DEFINE_integer("num_pose", 3, 'number of pose(x,y,z+pose)')
 
 
-def main(argv):
+def train(argv):
     # Network params
     grad_clip = 5
 
@@ -197,5 +197,80 @@ def main(argv):
 
         saver.save(sess, os.path.join(model_path, 'model'), global_step=epoch)
 
+
+def sample(argv):
+    checkpoint_path = 'model/default'
+    num_pose = 3
+    lstm_size = 64
+    num_layers = 3
+    max_length = 50
+
+    sample_data = DataGenerator("../raw_data/traj.npy",
+                                mode="sample",
+                                shuffle=False)
+
+    if os.path.isdir(checkpoint_path):
+        checkpoint_path = tf.train.latest_checkpoint(checkpoint_path)
+
+    with tf.name_scope('inputs'):
+        input_x = tf.placeholder(tf.float32, shape=(
+            1, 1, num_pose), name='inputs_x')
+
+        target = tf.placeholder(tf.float32, shape=(
+            1, 1, num_pose), name='inputs_target')
+
+    model = TrajNet(input_x,
+                    target,
+                    target,
+                    lstm_size=lstm_size,
+                    num_layers=num_layers,
+                    training=False,
+                    num_pose=num_pose,
+                    keep_prob=1)
+
+    proba_prediction = model.logits
+    final_state = model.final_state
+
+    saver = tf.train.Saver()
+
+    result_trajs = []
+    iterator = sample_data.data.make_one_shot_iterator()
+    next_batch = iterator.get_next()
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        saver.restore(sess, checkpoint_path)
+
+        start_pose, target_pose = sess.run(next_batch)
+
+        feed = {input_x: start_pose,
+                target: target_pose}
+
+        new_state = sess.run(model.initial_state)
+        for i, (c, h) in enumerate(model.initial_state):
+            feed[c] = new_state[i].c
+            feed[h] = new_state[i].h
+
+        preds, new_state = sess.run([proba_prediction,
+                                     final_state],
+                                    feed_dict=feed)
+        result_trajs.append(preds)
+
+        for i in range(max_length - 1):
+            # print("new_state: ", new_state)
+            feed = {input_x: preds}
+
+            for j, (c, h) in enumerate(model.initial_state):
+                feed[c] = new_state[j].c
+                feed[h] = new_state[j].h
+
+            preds, new_state = sess.run([proba_prediction,
+                                         final_state],
+                                        feed_dict=feed)
+
+            result_trajs.append(preds)
+            print(i)
+
+
 if __name__ == '__main__':
-    tf.compat.v1.app.run(main)
+    tf.compat.v1.app.run(sample)

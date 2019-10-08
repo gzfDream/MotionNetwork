@@ -197,8 +197,10 @@ def dataSet_generator(trajs_json, traj_start, save_trajs, pose_num, mode, or_rot
     elif mode == 'sample':
         traj = load_txt(traj_start)
         trajs += [traj]
-        trajs = np.reshape(trajs, (1, 2, 1, 7))
-
+        if or_rota:
+            trajs = np.reshape(trajs, (1, 2, 1, 7))
+        else:
+            trajs = np.reshape(trajs, (1, 2, 1, 3))
     np.save(save_trajs, trajs)
 
 
