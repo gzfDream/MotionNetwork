@@ -113,7 +113,7 @@ def train(argv):
     print("开始加载数据：")
     model_path = os.path.join('model', FLAGS.name)
 
-    train_data = DataGenerator("../raw_data/trajs_position.npy",
+    train_data = DataGenerator("./traj_position.npy",
                                mode="training",
                                batch_size=FLAGS.batch_size,
                                shuffle=True)
@@ -201,11 +201,11 @@ def train(argv):
 def sample(argv):
     checkpoint_path = 'model/train01'
     num_pose = 3
-    lstm_size = 64
-    num_layers = 3
-    max_length = 300
+    lstm_size = 128
+    num_layers = 5
+    max_length = 50
 
-    sample_data = DataGenerator("../raw_data/traj.npy",
+    sample_data = DataGenerator("./traj.npy",
                                 mode="sample",
                                 shuffle=False)
 
@@ -246,6 +246,7 @@ def sample(argv):
 
         start_pose, target_pose = sess.run(next_batch)
         # print(np.shape(list(target_pose)))
+        result_trajs.append(start_pose)
 
         feed = {input_x: start_pose,
                 input_y: target_pose,
@@ -277,7 +278,7 @@ def sample(argv):
             result_trajs.append(preds)
             print(i)
 
-    result_trajs = np.reshape(result_trajs, (max_length, num_pose))
+    result_trajs = np.reshape(result_trajs, (max_length+1, num_pose))
     result_list = []
     for pose in result_trajs:
         l = []
@@ -288,6 +289,6 @@ def sample(argv):
 
 
 if __name__ == '__main__':
-    tf.compat.v1.app.run(sample)
+    tf.compat.v1.app.run(train)
     # data = np.load("../raw_data/traj.npy")
     # print(np.shape(data[0][1]))
