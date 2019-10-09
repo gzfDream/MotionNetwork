@@ -93,16 +93,16 @@ class TrajNet:
                 self.cost = tf.compat.v1.losses.mean_squared_error(self._input_y, self.logits)
 
 
-tf.flags.DEFINE_string('name', 'train01', 'name of the model')
+tf.flags.DEFINE_string('name', 'train02', 'name of the model')
 tf.flags.DEFINE_integer('batch_size', 64, 'number of seqs in one batch')
 tf.flags.DEFINE_integer('num_steps', 50, 'length of one seq')
-tf.flags.DEFINE_integer('lstm_size', 64, 'size of hidden state of lstm')
-tf.flags.DEFINE_integer('num_layers', 3, 'number of lstm layers')
+tf.flags.DEFINE_integer('lstm_size', 128, 'size of hidden state of lstm')
+tf.flags.DEFINE_integer('num_layers', 5, 'number of lstm layers')
 tf.flags.DEFINE_float('learning_rate', 0.001, 'learning_rate')
 tf.flags.DEFINE_float('train_keep_prob', 0.5, 'dropout rate during training')
-tf.flags.DEFINE_integer('num_epochs', 100, 'max steps to train')
-tf.flags.DEFINE_integer('save_every_n', 10, 'save the model every n steps')
-tf.flags.DEFINE_integer('log_every_n', 10, 'log to the screen every n steps')
+tf.flags.DEFINE_integer('num_epochs', 200, 'max steps to train')
+tf.flags.DEFINE_integer('save_every_n', 20, 'save the model every n steps')
+tf.flags.DEFINE_integer('log_every_n', 20, 'log to the screen every n steps')
 tf.flags.DEFINE_integer("num_pose", 3, 'number of pose(x,y,z+pose)')
 
 
