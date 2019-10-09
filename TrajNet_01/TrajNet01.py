@@ -7,7 +7,7 @@
 """
 
 import sys
-sys.path.append('H:/OneDrive/code/MotionPlanning/MotionNetwork')
+# sys.path.append('H:/OneDrive/code/MotionPlanning/MotionNetwork')
 
 import numpy as np
 import tensorflow as tf
@@ -93,16 +93,16 @@ class TrajNet:
                 self.cost = tf.compat.v1.losses.mean_squared_error(self._input_y, self.logits)
 
 
-tf.flags.DEFINE_string('name', 'default', 'name of the model')
+tf.flags.DEFINE_string('name', 'train01', 'name of the model')
 tf.flags.DEFINE_integer('batch_size', 64, 'number of seqs in one batch')
 tf.flags.DEFINE_integer('num_steps', 50, 'length of one seq')
 tf.flags.DEFINE_integer('lstm_size', 64, 'size of hidden state of lstm')
 tf.flags.DEFINE_integer('num_layers', 3, 'number of lstm layers')
 tf.flags.DEFINE_float('learning_rate', 0.001, 'learning_rate')
 tf.flags.DEFINE_float('train_keep_prob', 0.5, 'dropout rate during training')
-tf.flags.DEFINE_integer('num_epochs', 10, 'max steps to train')
-tf.flags.DEFINE_integer('save_every_n', 2, 'save the model every n steps')
-tf.flags.DEFINE_integer('log_every_n', 2, 'log to the screen every n steps')
+tf.flags.DEFINE_integer('num_epochs', 100, 'max steps to train')
+tf.flags.DEFINE_integer('save_every_n', 10, 'save the model every n steps')
+tf.flags.DEFINE_integer('log_every_n', 10, 'log to the screen every n steps')
 tf.flags.DEFINE_integer("num_pose", 3, 'number of pose(x,y,z+pose)')
 
 
@@ -199,11 +199,11 @@ def train(argv):
 
 
 def sample(argv):
-    checkpoint_path = 'model/default'
+    checkpoint_path = 'model/train01'
     num_pose = 3
     lstm_size = 64
     num_layers = 3
-    max_length = 50
+    max_length = 300
 
     sample_data = DataGenerator("../raw_data/traj.npy",
                                 mode="sample",
@@ -213,14 +213,17 @@ def sample(argv):
         checkpoint_path = tf.train.latest_checkpoint(checkpoint_path)
 
     with tf.name_scope('inputs'):
-        input_x = tf.placeholder(tf.float32, shape=(
+        input_x = tf.compat.v1.placeholder(tf.float32, shape=(
             1, 1, num_pose), name='inputs_x')
 
-        target = tf.placeholder(tf.float32, shape=(
+        input_y = tf.compat.v1.placeholder(tf.float32, shape=(
+            1, 1, num_pose), name='inputs_y')
+
+        target = tf.compat.v1.placeholder(tf.float32, shape=(
             1, 1, num_pose), name='inputs_target')
 
     model = TrajNet(input_x,
-                    target,
+                    input_y,
                     target,
                     lstm_size=lstm_size,
                     num_layers=num_layers,
@@ -242,8 +245,10 @@ def sample(argv):
         saver.restore(sess, checkpoint_path)
 
         start_pose, target_pose = sess.run(next_batch)
+        # print(np.shape(list(target_pose)))
 
         feed = {input_x: start_pose,
+                input_y: target_pose,
                 target: target_pose}
 
         new_state = sess.run(model.initial_state)
@@ -258,7 +263,8 @@ def sample(argv):
 
         for i in range(max_length - 1):
             # print("new_state: ", new_state)
-            feed = {input_x: preds}
+            feed = {input_x: preds,
+                    target: target_pose}
 
             for j, (c, h) in enumerate(model.initial_state):
                 feed[c] = new_state[j].c
@@ -271,6 +277,17 @@ def sample(argv):
             result_trajs.append(preds)
             print(i)
 
+    result_trajs = np.reshape(result_trajs, (max_length, num_pose))
+    result_list = []
+    for pose in result_trajs:
+        l = []
+        for i in pose:
+            l.append(i)
+        result_list.append(l)
+    np.savetxt("results.txt", result_list, fmt='%f', delimiter=' ')
+
 
 if __name__ == '__main__':
     tf.compat.v1.app.run(sample)
+    # data = np.load("../raw_data/traj.npy")
+    # print(np.shape(data[0][1]))
