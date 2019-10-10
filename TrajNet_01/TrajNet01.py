@@ -199,11 +199,11 @@ def train(argv):
 
 
 def sample(argv):
-    checkpoint_path = 'model/train01'
+    checkpoint_path = 'model/train02'
     num_pose = 3
     lstm_size = 128
     num_layers = 5
-    max_length = 50
+    max_length = 150
 
     sample_data = DataGenerator("./traj.npy",
                                 mode="sample",
@@ -289,6 +289,6 @@ def sample(argv):
 
 
 if __name__ == '__main__':
-    tf.compat.v1.app.run(train)
+    tf.compat.v1.app.run(sample)
     # data = np.load("../raw_data/traj.npy")
     # print(np.shape(data[0][1]))

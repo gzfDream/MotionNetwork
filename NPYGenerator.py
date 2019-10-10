@@ -208,8 +208,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('trajs', "./raw_data/json_after/train", 'the path of trajs')
 flags.DEFINE_string('traj_start', "./TrajNet_01/test.txt", 'the start pose for sample')
-flags.DEFINE_string('trajs_save', "./TrajNet_01/traj_position.npy", 'the save path of trajs npy')
-flags.DEFINE_string('mode', 'training', ' training or sample')
+flags.DEFINE_string('trajs_save', "./TrajNet_01/traj.npy", 'the save path of trajs npy')
+flags.DEFINE_string('mode', 'sample', ' training or sample')
 flags.DEFINE_integer('pose_num', 50, '轨迹中姿态数量')
 
 def main(argv):
@@ -223,14 +223,14 @@ def main(argv):
 
 
 def DataForTest():
-    test = load_json("raw_data/json_after/D-10005-2019-5-2216-14-50.json", False)
-    np.savetxt("TrajNet_01/groundTrue.txt", test, fmt='%f', delimiter=' ')
+    test = load_json("raw_data/json_after/test/D-10212-2019-5-2415-17-15.json", False)
+    np.savetxt("TrajNet_01/original.txt", test, fmt='%f', delimiter=' ')
 
     start_p = [test[0], test[-1]]
     np.savetxt("TrajNet_01/test.txt", start_p, fmt='%f', delimiter=' ')
 
 
 if __name__ == '__main__':
-    # DataForTest()
+    DataForTest()
     app.run(main)
 
