@@ -1,83 +1,113 @@
 import tensorflow as tf
 import numpy as np
 
-tf.enable_eager_execution()
-
 
 class RNN(tf.keras.Model):
-    def __init__(self, num_chars, batch_size, seq_length):
+    def __init__(self, num_pose, batch_size, seq_length):
         super().__init__()
-        self.num_chars = num_chars
+        self.num_pose = num_pose
         self.seq_length = seq_length
         self.batch_size = batch_size
-        self.cell = tf.keras.layers.LSTMCell(units=256)
-        self.dense = tf.keras.layers.Dense(units=self.num_chars)
+        self.cell_1 = tf.keras.layers.LSTMCell(units=256, return_sequences=True)
+        self.cell_2 = tf.keras.layers.LSTMCell(units=256, return_sequences=True)
+        self.cell_3 = tf.keras.layers.LSTMCell(units=256, return_sequences=True)
+        self.dense_1 = tf.keras.layers.Dense(units=128, activation='relu')
+        self.dense_2 = tf.keras.layers.Dense(units=self.num_pose, activation='relu')
 
-    def call(self, inputs, from_logits=False):
-        inputs = tf.one_hot(inputs, depth=self.num_chars)       # [batch_size, seq_length, num_chars]
-        state = self.cell.get_initial_state(batch_size=self.batch_size, dtype=tf.float32)
+    @tf.function
+    def call(self, inputs):
+        # inputs = tf.one_hot(inputs, depth=self.num_chars)       # [batch_size, seq_length, num_chars]
+        state_1 = self.cell_1.get_initial_state(batch_size=self.batch_size, dtype=tf.float32)
+        state_2 = self.cell_2.get_initial_state(batch_size=self.batch_size, dtype=tf.float32)
+        state_3 = self.cell_3.get_initial_state(batch_size=self.batch_size, dtype=tf.float32)
         for t in range(self.seq_length):
-            output, state = self.cell(inputs[:, t, :], state)
-        logits = self.dense(output)
-        if from_logits:
-            return logits
-        else:
-            return tf.nn.softmax(logits)
+            if t == 0:
+                output_1, state_1 = self.cell_1(inputs[:, t, :], state_1)
+                output_2, state_2 = self.cell_2(output_1, state_2)
+                output, state_3 = self.cell_2(output_2, state_3)
+            # else:
+            #     output_1, state_1 = self.cell_1(inputs[:, t, :], state_1)
+            #     state_12 = tf.concat([state_1, state_2], axis=1)
+            #     output_2, state_2 = self.cell_2(inputs[:, t, :], state_12)
+            #     state_23 = tf.concat(state_2, state_3, axis=1)
+            #     output_3, state_3 = self.cell_2(inputs[:, t, :], state_23)
 
-    def predict(self, inputs, temperature=1.):
-        batch_size, _ = tf.shape(inputs)
-        logits = self(inputs, from_logits=True)
-        prob = tf.nn.softmax(logits / temperature).numpy()
-        return np.array([np.random.choice(self.num_chars, p=prob[i, :])
-                         for i in range(batch_size.numpy())])
+        # output = tf.concat([output_1, output_2, output_3], axis=2)
+        print(output.shape)
+        logits = self.dense_1(output)
+        logits = self.dense_2(logits)
+        # logits = tf.reshape(logits, (self.batch_size, self.seq_length, self.num_pose))
+
+        return logits
 
 
-class DataLoader():
-    def __init__(self):
-        path = tf.keras.utils.get_file('nietzsche.txt',
-            origin='https://s3.amazonaws.com/text-datasets/nietzsche.txt')
-        with open(path, encoding='utf-8') as f:
-            self.raw_text = f.read().lower()
-        self.chars = sorted(list(set(self.raw_text)))
-        self.char_indices = dict((c, i) for i, c in enumerate(self.chars))
-        self.indices_char = dict((i, c) for i, c in enumerate(self.chars))
-        self.text = [self.char_indices[c] for c in self.raw_text]
+class DataLoaderTrajs:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.trajs = np.load(self.file_path)
 
-    def get_batch(self, seq_length, batch_size):
+    def get_batch(self, batch_size):
         seq = []
-        next_char = []
+        next_pose = []
+
         for i in range(batch_size):
-            index = np.random.randint(0, len(self.text) - seq_length)
-            seq.append(self.text[index:index+seq_length])
-            next_char.append(self.text[index+seq_length])
-        return np.array(seq), np.array(next_char)       # [batch_size, seq_length], [num_batch]
+            index = np.random.randint(0, np.shape(self.trajs)[0])
+            pose = np.concatenate((self.trajs[index][0], self.trajs[index][2]), axis=1)
+            seq.append(pose)
+            next_pose.append(self.trajs[index][1][-1])
+
+        return np.array(seq, dtype=np.float32), np.array(next_pose, dtype=np.float32)
 
 
-if __name__ == '__main__':
-    num_batches = 1000
-    seq_length = 40
-    batch_size = 50
+def train():
+    num_epochs = 1000
+    seq_length = 50
+    batch_size = 64
     learning_rate = 1e-3
 
-    data_loader = DataLoader()
-    model = RNN(num_chars=len(data_loader.chars), batch_size=batch_size, seq_length=seq_length)
+    data_path = "traj_position.npy"
+    data_loader = DataLoaderTrajs(data_path)
+
+    model = RNN(num_pose=3, batch_size=batch_size, seq_length=seq_length)
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-    for batch_index in range(num_batches):
-        X, y = data_loader.get_batch(seq_length, batch_size)
+    for batch_index in range(num_epochs):
+        X, y = data_loader.get_batch(batch_size)
         with tf.GradientTape() as tape:
-            y_pred = model(X)
-            loss = tf.keras.losses.sparse_categorical_crossentropy(y_true=y, y_pred=y_pred)
+            y_pred = model.call(X)
+            # loss = tf.keras.losses.sparse_categorical_crossentropy(y_true=y, y_pred=y_pred)
+            loss = tf.keras.losses.mean_squared_error(y_true=y, y_pred=y_pred)
             loss = tf.reduce_mean(loss)
             print("batch %d: loss %f" % (batch_index, loss.numpy()))
         grads = tape.gradient(loss, model.variables)
         optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
 
-    X_, _ = data_loader.get_batch(seq_length, 1)
-    for diversity in [0.2, 0.5, 1.0, 1.2]:
-        X = X_
-        print("diversity %f:" % diversity)
-        for t in range(400):
-            y_pred = model.predict(X, diversity)
-            print(data_loader.indices_char[y_pred[0]], end='', flush=True)
-            X = np.concatenate([X[:, 1:], np.expand_dims(y_pred, axis=1)], axis=-1)
-        print("\n")
+    tf.saved_model.save(model, "model/train01")
+
+    X_, _ = data_loader.get_batch(1)
+    print(X_)
+    for t in range(4):
+        y_pred = model.call(X_)
+        print(y_pred)
+        # X_ = np.concatenate([X_[:, 1:], np.expand_dims(y_pred, axis=1)], axis=-1)
+    print("\n")
+
+
+def sample():
+    test_path = "traj_position.npy"
+    data_loader = DataLoaderTrajs(test_path)
+
+    model = tf.saved_model.load("model/train01")
+
+    X_, _ = data_loader.get_batch(1)
+    for t in range(400):
+        y_pred = model.call(X_, True)
+        print(y_pred)
+        X_ = np.concatenate([X_[:, 1:], np.expand_dims(y_pred, axis=1)], axis=-1)
+    print("\n")
+
+
+if __name__ == '__main__':
+    train()
+    # sample()
+
+

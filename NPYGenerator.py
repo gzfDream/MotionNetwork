@@ -207,9 +207,9 @@ def dataSet_generator(trajs_json, traj_start, save_trajs, pose_num, mode, or_rot
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('trajs', "./raw_data/json_after/train", 'the path of trajs')
-flags.DEFINE_string('traj_start', "./TrajNet_01/test.txt", 'the start pose for sample')
-flags.DEFINE_string('trajs_save', "./TrajNet_01/traj.npy", 'the save path of trajs npy')
-flags.DEFINE_string('mode', 'sample', ' training or sample')
+flags.DEFINE_string('traj_start', "./TrajNet_02/test.txt", 'the start pose for sample')
+flags.DEFINE_string('trajs_save', "./TrajNet_02/traj_position.npy", 'the save path of trajs npy')
+flags.DEFINE_string('mode', 'training', ' training or sample')
 flags.DEFINE_integer('pose_num', 50, '轨迹中姿态数量')
 
 def main(argv):
@@ -218,6 +218,8 @@ def main(argv):
     dataSet_generator(FLAGS.trajs, FLAGS.traj_start, FLAGS.trajs_save, FLAGS.pose_num, FLAGS.mode, False)
     if FLAGS.mode == "sample":
         print(np.load(FLAGS.trajs_save))
+    else:
+        print(np.shape(np.load(FLAGS.trajs_save)))
 
     # json2npy('./raw_data/json_after')
 
@@ -231,6 +233,6 @@ def DataForTest():
 
 
 if __name__ == '__main__':
-    DataForTest()
+    # DataForTest()
     app.run(main)
 
