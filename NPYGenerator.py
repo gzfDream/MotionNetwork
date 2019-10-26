@@ -206,16 +206,16 @@ def dataSet_generator(trajs_json, traj_start, save_trajs, pose_num, mode, or_rot
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('trajs', "./raw_data/json_after/train", 'the path of trajs')
-flags.DEFINE_string('traj_start', "./TrajNet_02/test.txt", 'the start pose for sample')
-flags.DEFINE_string('trajs_save', "./TrajNet_02/traj_position.npy", 'the save path of trajs npy')
+flags.DEFINE_string('trajs', "./raw_data/json_after/test", 'the path of trajs')
+flags.DEFINE_string('traj_start', "./TrajNet_03/test.txt", 'the start pose for sample')
+flags.DEFINE_string('trajs_save', "./TrajNet_03/traj_position_rotate_test.npy", 'the save path of trajs npy')
 flags.DEFINE_string('mode', 'training', ' training or sample')
 flags.DEFINE_integer('pose_num', 50, '轨迹中姿态数量')
 
 def main(argv):
     # process_json('./raw_data/json', "./raw_data/json_after/")
 
-    dataSet_generator(FLAGS.trajs, FLAGS.traj_start, FLAGS.trajs_save, FLAGS.pose_num, FLAGS.mode, False)
+    dataSet_generator(FLAGS.trajs, FLAGS.traj_start, FLAGS.trajs_save, FLAGS.pose_num, FLAGS.mode, True)
     if FLAGS.mode == "sample":
         print(np.load(FLAGS.trajs_save))
     else:
