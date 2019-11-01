@@ -88,6 +88,7 @@ class MDN_output_layer(tf.keras.layers.Layer):
 
         return mu, sigma, mix
 
+
 def MDN_LOSS(y_true, y_pred):
     shape = np.shape(y_pred)
     out_size = y_true.shape[-1]
@@ -102,7 +103,7 @@ def MDN_LOSS(y_true, y_pred):
     print(mix)
 
     epsilon = 1e-5
-    factor = 1 / math.sqrt(2 * math.pi)  # 系数
+    # factor = 1 / math.sqrt(2 * math.pi)  # 系数
 
     mu = tf.reshape(mu, (mu.shape[0], mu.shape[1], out_size, components_size))
     mu = tf.transpose(mu, [3, 0, 1, 2])
@@ -112,7 +113,8 @@ def MDN_LOSS(y_true, y_pred):
     exponent = exponent_1 / exponent_2  # 维度[components_size, batch_size, time_steps]
     # y_normal = factor * tf.exp(exponent) / tf.maximum(sigma, epsilon)
     mix = tf.transpose(mix, [2, 0, 1])
-    exponent = exponent + tf.math.log(mix) - (out_size * .5) * math.log(factor)
+    normalizer = (2 * math.pi * sigma)
+    exponent = exponent + tf.math.log(mix) - (out_size * .5) * tf.math.log(normalizer)
     exponent = tf.transpose(exponent, [1, 2, 0])
 
     max_exponent = np.max(exponent, axis=2, keepdims=True)
@@ -120,9 +122,10 @@ def MDN_LOSS(y_true, y_pred):
     gauss_mix = tf.reduce_sum(tf.exp(mod_exponent), axis=2, keepdims=True)
     log_gauss = tf.math.log(gauss_mix) + max_exponent
 
-    cost = tf.reduce_mean(log_gauss)
+    cost = -tf.reduce_mean(log_gauss)
 
     return cost
+
 
 class SimpleRNN:
     def __new__(self, hidden, inp_dim, op_dim, stacked_lstm_layers):
@@ -137,7 +140,7 @@ class SimpleRNN:
         self.model.add(tf.keras.layers.Dense(units=op_dim))
         self.model.add(tf.keras.layers.Activation('relu'))
 
-        # self.model.add(MDN_output_layer(components_size=20, out_size=op_dim))
+        self.model.add(MDN_output_layer(components_size=3, out_size=op_dim))
 
         self.model.compile(loss='mse',
                            optimizer='adadelta',
@@ -247,5 +250,5 @@ if __name__ == '__main__':
         [[1.1, 2.1], [1., 2.1], [1., 2.1]]
     ])
 
-    # MDN_LOSS(y_true, y_pred)
-    print(tf.reduce_mean(y_true))
+    MDN_LOSS(y_true, y_pred)
+

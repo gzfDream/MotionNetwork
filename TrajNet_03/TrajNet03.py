@@ -60,6 +60,7 @@ class DataLoaderTrajs:
 
         return np.array(x_train, dtype=np.float32), np.array(y_train, dtype=np.float32)
 
+
 # 自定义损失函数（继承keras.losses.Loss）
 class WeightedLossFunction(keras.losses.Loss):
     def __init__(self, weight=0.5, reduction=keras.losses.Reduction.AUTO, name="WeightedLossFunction"):
@@ -112,6 +113,10 @@ def basic_loss_function(y_true, y_pred):
     return loss_dis + loss_rotate
 
 
+def mdn_loss_xyz(y_true, y_pred):
+    mixtures = 3  # 混合高斯数
+
+
 batch_size = 64
 time_steps = 50
 pose_size = 7
@@ -127,14 +132,14 @@ def train():
     lstm_layer_0 = layers.LSTM(256, return_sequences=True)
     lstm_layer_1 = layers.LSTM(256, return_sequences=True)
     lstm_layer_2 = layers.LSTM(256, return_sequences=True)
-    lstm_layer_2 = layers.LSTM(256, return_sequences=True)
+    lstm_layer_3 = layers.LSTM(256, return_sequences=False)
     dense_layer_0 = layers.Dense(128, activation='relu')
     dense_layer_1 = layers.Dense(pose_size, activation='relu')
 
     x_out0 = lstm_layer_0(inputs)
     x_out1 = lstm_layer_1(x_out0)
     x_out2 = lstm_layer_2(x_out1)
-    x_out3 = lstm_layer_2(x_out2)
+    x_out3 = lstm_layer_3(x_out2)
     x_out4 = dense_layer_0(x_out3)
     outputs = dense_layer_1(x_out4)
 
@@ -143,7 +148,7 @@ def train():
     """
         模型结构
     """
-    # model.summary()
+    model.summary()
     # keras.utils.plot_model(model, 'rnn_model.png', show_shapes=True)
 
     """
@@ -231,7 +236,7 @@ def predict():
 
 
 if __name__ == '__main__':
-    # train()
+    train()
     # evaluate()
-    predict()
+    # predict()
 
